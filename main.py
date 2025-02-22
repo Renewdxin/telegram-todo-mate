@@ -13,6 +13,7 @@ from bot.handler import handle_message
 from bot.scheduler import start_scheduler
 from bot.config import TELEGRAM_BOT_TOKEN, REMINDER_TIME, TIMEZONE
 from utils.logger import init_logger
+from modules.todo.models import init_db
 
 async def shutdown(application: Application):
     """Shutdown the application gracefully"""
@@ -74,4 +75,6 @@ def run_bot():
             raise e
 
 if __name__ == '__main__':
+    # 初始化数据库（仅在首次运行或者确保表不存在时调用一次）
+    init_db()
     run_bot()

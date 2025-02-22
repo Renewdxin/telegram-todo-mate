@@ -24,15 +24,14 @@ async def handle_message(update: Update, context: CallbackContext):
             return
         try:
             todo_id = int(parts[1])
-            success = todo_service.complete_todo(todo_id)
-            if success:
+            if todo_service.complete_todo(todo_id):
                 await message.reply_text(
                     f"✅ 任务 <code>{todo_id}</code> 已标记为完成",
                     parse_mode=ParseMode.HTML
                 )
             else:
                 await message.reply_text(
-                    "❌ 任务不存在或状态错误",
+                    "❌ 任务不存在或已完成",
                     parse_mode=ParseMode.HTML
                 )
         except ValueError:
@@ -52,8 +51,7 @@ async def handle_message(update: Update, context: CallbackContext):
             return
         try:
             todo_id = int(parts[1])
-            success = todo_service.delete_todo(todo_id)
-            if success:
+            if todo_service.delete_todo(todo_id):
                 await message.reply_text(
                     f"🗑 任务 <code>{todo_id}</code> 已删除",
                     parse_mode=ParseMode.HTML
@@ -110,14 +108,20 @@ async def handle_message(update: Update, context: CallbackContext):
             )
             return
         new_end_time_str = parts[1]
-        if todo_service.modify_end_time(todo_id, new_end_time_str):
+        try:
+            if todo_service.modify_end_time(todo_id, new_end_time_str):
+                await message.reply_text(
+                    f"✅ 任务 <code>{todo_id}</code> 截止时间已更新为 <code>{new_end_time_str}</code>",
+                    parse_mode=ParseMode.HTML
+                )
+            else:
+                await message.reply_text(
+                    "❌ 任务不存在",
+                    parse_mode=ParseMode.HTML
+                )
+        except ValueError as e:
             await message.reply_text(
-                f"✅ 任务 <code>{todo_id}</code> 截止时间已更新为 <code>{new_end_time_str}</code>",
-                parse_mode=ParseMode.HTML
-            )
-        else:
-            await message.reply_text(
-                "❌ 截止时间格式错误或任务不存在",
+                f"❌ {str(e)}",
                 parse_mode=ParseMode.HTML
             )
     
@@ -129,7 +133,7 @@ async def handle_message(update: Update, context: CallbackContext):
                 f"✅ 任务创建成功！\n"
                 f"📌 任务编号：<code>{todo.todo_id}</code>\n"
                 f"📝 任务内容：{todo.todo_name}\n"
-                f"⏱ 创建时间：{todo.creation_time.strftime('%Y-%m-%d %H:%M')}"
+                f"⏱ 创建时间：{todo.create_time.strftime('%Y-%m-%d %H:%M')}"
             )
             if todo.end_time:
                 response += f"\n⏰ 截止时间：{todo.end_time.strftime('%Y-%m-%d %H:%M')}"
