@@ -90,7 +90,6 @@ async def handle_message(update: Update, context: CallbackContext):
     
     # 新增：修改任务截止时间的指令
     elif text.lower().startswith("change endtime"):
-        # 格式示例：change endtime 1 2025-03-01 12:00
         command_args = text[len("change endtime"):].strip()
         parts = command_args.split(None, 1)
         if len(parts) < 2:
@@ -103,10 +102,11 @@ async def handle_message(update: Update, context: CallbackContext):
             todo_id = int(parts[0])
         except ValueError:
             await message.reply_text(
-                "任务编号应为数字",
+                "❌ 任务编号应为数字",
                 parse_mode=ParseMode.HTML
             )
             return
+        
         new_end_time_str = parts[1]
         try:
             if todo_service.modify_end_time(todo_id, new_end_time_str):
@@ -116,7 +116,7 @@ async def handle_message(update: Update, context: CallbackContext):
                 )
             else:
                 await message.reply_text(
-                    "❌ 任务不存在",
+                    "❌ 操作失败",
                     parse_mode=ParseMode.HTML
                 )
         except ValueError as e:
@@ -124,6 +124,24 @@ async def handle_message(update: Update, context: CallbackContext):
                 f"❌ {str(e)}",
                 parse_mode=ParseMode.HTML
             )
+    
+    # 查询所有待办事项
+    elif text.lower() == "/demo":
+        todos = todo_service.get_all_todos()
+        formatted_list = todo_service.format_todo_list(todos, "all")
+        await message.reply_text(
+            formatted_list,
+            parse_mode=ParseMode.HTML
+        )
+    
+    # 查询未完成的待办事项
+    elif text.lower() == "/demoz":
+        todos = todo_service.get_pending_todos()
+        formatted_list = todo_service.format_todo_list(todos, "pending")
+        await message.reply_text(
+            formatted_list,
+            parse_mode=ParseMode.HTML
+        )
     
     # 如果不匹配上述指令，则视为任务创建
     else:
