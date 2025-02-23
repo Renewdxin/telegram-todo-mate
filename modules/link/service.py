@@ -1,5 +1,6 @@
 import logging
 import re
+import html
 from typing import Optional, Tuple, List
 
 import aiohttp
@@ -30,6 +31,14 @@ class LinkService:
     def __init__(self):
         self.repository = LinkRepository()
         self.ai_service = AIService()
+
+    def clean_html(self, text: str) -> str:
+        """清理HTML标签并转义特殊字符"""
+        # 移除所有HTML标签
+        text = re.sub(r'<[^>]+>', '', text)
+        # 转义特殊字符
+        text = html.escape(text)
+        return text
 
     async def extract_url_and_title(self, text: str) -> Tuple[str, Optional[str]]:
         """
@@ -67,6 +76,8 @@ class LinkService:
         """保存链接并返回提示信息"""
         try:
             url, title = await self.extract_url_and_title(text)
+            if title:
+                title = self.clean_html(title)  # 清理标题中的HTML
             db = SessionLocal()
             try:
                 link = Link(
@@ -151,10 +162,10 @@ class LinkService:
                 async with session.get(url) as response:
                     if response.status != 200:
                         return "无法获取网页内容"
-                    html = await response.text()
+                    html_content = await response.text()
 
             # 解析网页内容
-            soup = BeautifulSoup(html, 'html.parser')
+            soup = BeautifulSoup(html_content, 'html.parser')
             # 移除脚本和样式
             for script in soup(["script", "style"]):
                 script.decompose()
@@ -166,8 +177,9 @@ class LinkService:
             text = ' '.join(chunk for chunk in chunks if chunk)
             
             # 使用 AI 生成摘要
-            summary = await self.ai_service.generate_summary(url, text[:5000])  # 限制文本长度
-            return summary
+            summary = await self.ai_service.generate_summary(url, text[:5000])
+            # 清理并转义摘要中的HTML
+            return self.clean_html(summary)
         except Exception as e:
             logging.error(f"生成摘要失败: {e}")
             return "生成摘要时发生错误"
