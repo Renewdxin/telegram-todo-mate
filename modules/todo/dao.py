@@ -3,7 +3,8 @@ from datetime import datetime, date
 
 from sqlalchemy import Date
 
-from modules.todo.models import Todo, SessionLocal
+from modules.database import SessionLocal
+from modules.todo.models import Todo
 
 
 class TodoDAO:

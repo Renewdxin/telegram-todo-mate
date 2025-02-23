@@ -7,3 +7,4 @@ psycopg2-binary==2.9.9
 aiohttp==3.9.3         # 用于异步HTTP请求
 beautifulsoup4==4.12.3 # 用于解析网页内容（可选，如果需要抓取链接标题）
 lxml==5.1.0   
+certifi==2024.2.2 

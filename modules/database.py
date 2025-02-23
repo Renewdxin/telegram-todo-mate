@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from sqlalchemy import create_engine
@@ -38,7 +39,8 @@ engine = create_engine(
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 def init_db():
     """ 初始化数据库表（第一次启动时执行） """
     from modules.base_model import Base
-    Base.metadata.create_all(bind=engine) 
+    Base.metadata.create_all(bind=engine)
