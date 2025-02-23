@@ -22,8 +22,8 @@ class LinkHandler:
         """处理用户发送的URL"""
         user_id = update.effective_user.id
         message_text = update.message.text
-
-        response = self.service.save_link(user_id, message_text)
+        
+        response = await self.service.save_link(user_id, message_text)
         await update.message.reply_text(response, parse_mode=ParseMode.HTML)
 
     async def handle_summarize(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -106,7 +106,7 @@ class LinkHandler:
                 if hasattr(link_info, 'url'):
                     url = link_info.url
                 else:
-                    url_match = re.search(r'�� URL: (https?://[^\n]+)', link_info)
+                    url_match = re.search(r'🌐 URL: (https?://[^\n]+)', link_info)
                     if url_match:
                         url = url_match.group(1)
                     else:

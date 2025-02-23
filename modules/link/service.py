@@ -67,8 +67,20 @@ class LinkService:
         """保存链接并返回提示信息"""
         try:
             url, title = await self.extract_url_and_title(text)
-            link = self.repository.create(user_id, url, title)
-            return f"✅ 链接已保存！\n🔗 ID: {link.id}\n📝 标题: {title if title else '无标题'}"
+            db = SessionLocal()
+            try:
+                link = Link(
+                    user_id=user_id,
+                    url=url,
+                    title=title,
+                    is_read=False
+                )
+                db.add(link)
+                db.commit()
+                db.refresh(link)
+                return f"✅ 链接已保存！\n🔗 ID: {link.id}\n📝 标题: {title if title else '无标题'}"
+            finally:
+                db.close()
         except ValueError as e:
             return f"❌ 错误: {str(e)}"
         except Exception as e:
