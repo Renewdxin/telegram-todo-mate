@@ -15,45 +15,6 @@ class AIService:
             "Authorization": f"Bearer {self.api_key}"
         }
 
-    def _format_markdown_to_html(self, text: str) -> str:
-        """
-        将 Markdown 格式转换为 Telegram HTML 格式
-        """
-        # 移除多余的空行
-        text = re.sub(r'\n\s*\n', '\n', text)
-
-        # 处理标题
-        text = re.sub(r'#{1,6}\s+(.+)', r'<b>\1</b>', text)
-
-        # 处理加粗
-        text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
-        text = re.sub(r'__(.+?)__', r'<b>\1</b>', text)
-
-        # 处理斜体
-        text = re.sub(r'\*(.+?)\*', r'<i>\1</i>', text)
-        text = re.sub(r'_(.+?)_', r'<i>\1</i>', text)
-
-        # 处理代码块
-        text = re.sub(r'```.*?\n(.*?)```', r'<code>\1</code>', text, flags=re.DOTALL)
-
-        # 处理行内代码
-        text = re.sub(r'`(.+?)`', r'<code>\1</code>', text)
-
-        # 处理列表
-        text = re.sub(r'^\s*[-*+]\s+', '• ', text, flags=re.MULTILINE)
-        text = re.sub(r'^\s*\d+\.\s+', r'📌 ', text, flags=re.MULTILINE)
-
-        # 处理引用
-        text = re.sub(r'^\s*>\s+(.+)', r'❝ \1', text, flags=re.MULTILINE)
-
-        # 移除链接格式但保留文本
-        text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
-
-        # 确保段落之间有适当的间距
-        text = text.replace('\n\n', '\n')
-
-        return text.strip()
-
     async def _make_request(self, messages: list, temperature: float = 0.5) -> str:
         """
         发送请求到 API
@@ -86,7 +47,7 @@ class AIService:
                     raise Exception(f"API 请求失败: 状态码 {response.status}, 错误信息: {error_text}")
                 result = await response.json()
                 content = result['choices'][0]['message']['content']
-                return self._format_markdown_to_html(content)  # 在返回之前格式化内容
+                return content
 
     async def generate_title(self, url: str, content: str) -> str:
         """根据链接和内容生成标题"""

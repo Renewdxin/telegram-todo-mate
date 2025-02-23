@@ -177,9 +177,7 @@ class LinkService:
             text = ' '.join(chunk for chunk in chunks if chunk)
             
             # 使用 AI 生成摘要
-            summary = await self.ai_service.generate_summary(url, text[:5000])
-            # 清理并转义摘要中的HTML
-            return self.clean_html(summary)
+            return await self.ai_service.generate_summary(url, text[:5000])
         except Exception as e:
             logging.error(f"生成摘要失败: {e}")
             return "生成摘要时发生错误"
