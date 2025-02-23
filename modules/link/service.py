@@ -169,15 +169,22 @@ class LinkService:
             # 移除脚本和样式
             for script in soup(["script", "style"]):
                 script.decompose()
+            # 获取纯文本
             text = soup.get_text()
             
-            # 清理文本
+            # 清理文本：移除多余空白
             lines = (line.strip() for line in text.splitlines())
-            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-            text = ' '.join(chunk for chunk in chunks if chunk)
+            text = ' '.join(line for line in lines if line)
             
-            # 使用 AI 生成摘要
-            return await self.ai_service.generate_summary(url, text[:5000])
+            # 使用 AI 生成摘要，限制输入长度
+            summary = await self.ai_service.generate_summary(url, text[:5000])
+            # 确保返回纯文本
+            if summary:
+                # 移除所有可能的HTML标签
+                summary = re.sub(r'<[^>]+>', '', summary)
+                # 移除多余的空白字符
+                summary = ' '.join(summary.split())
+            return summary
         except Exception as e:
             logging.error(f"生成摘要失败: {e}")
             return "生成摘要时发生错误"

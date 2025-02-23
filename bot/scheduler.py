@@ -110,18 +110,30 @@ async def send_unread_links_summary(bot, chat_id):
     for link in unread_links:
         try:
             summary = await service.generate_summary(link.url)
+            if not summary:  # 添加空摘要检查
+                continue
+                
             message = f"🔍 <b>{link.title or '无标题'}</b>\n\n"
             message += f"🌐 <a href='{link.url}'>原文链接</a>\n\n"
             message += f"📝 <b>摘要</b>:\n{summary}"
             
-            await bot.send_message(
-                chat_id=chat_id,
-                text=message,
-                parse_mode=ParseMode.HTML,
-                disable_web_page_preview=True
-            )
+            try:  # 添加单独的消息发送错误处理
+                await bot.send_message(
+                    chat_id=chat_id,
+                    text=message,
+                    parse_mode=ParseMode.HTML,
+                    disable_web_page_preview=True
+                )
+            except TelegramError as te:
+                logging.error(f"发送链接摘要消息失败: {te}")
+                # 尝试发送不带格式的消息
+                await bot.send_message(
+                    chat_id=chat_id,
+                    text=f"链接: {link.url}\n\n摘要生成失败，请直接访问原文。",
+                    disable_web_page_preview=True
+                )
         except Exception as e:
-            logging.error(f"生成链接摘要失败: {e}")
+            logging.error(f"生成链接摘要失败 (URL: {link.url}): {str(e)}")
             continue
 
 

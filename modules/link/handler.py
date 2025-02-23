@@ -10,6 +10,7 @@ from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters
 
 from modules.link.ai_service import AIService
 from modules.link.service import LinkService
+from modules.link.sanitizer import sanitize_telegram_html
 
 
 class LinkHandler:
@@ -66,8 +67,10 @@ class LinkHandler:
                     if response.status == 200:
                         content = await response.text()
                         summary = await self.ai_service.generate_summary(url, content)
+                        # 统一调用清理函数，清理不支持的HTML标签
+                        safe_summary = sanitize_telegram_html(summary)
                         await update.message.reply_text(
-                            summary,
+                            safe_summary,
                             parse_mode=ParseMode.HTML
                         )
                     else:
@@ -79,7 +82,7 @@ class LinkHandler:
         except Exception as e:
             logging.error(f"生成摘要时发生错误: {str(e)}")
             await update.message.reply_text(
-                f"❌ 生成摘要时发生错误，请检查URL格式是否正确",
+                "❌ 生成摘要时发生错误，请检查URL格式是否正确",
                 parse_mode=ParseMode.HTML
             )
 
@@ -123,8 +126,9 @@ class LinkHandler:
                     if response.status == 200:
                         content = await response.text()
                         explanation = await self.ai_service.generate_explanation(url, content)
+                        safe_explanation = sanitize_telegram_html(explanation)
                         await update.message.reply_text(
-                            explanation,
+                            safe_explanation,
                             parse_mode=ParseMode.HTML
                         )
                     else:
@@ -136,7 +140,7 @@ class LinkHandler:
         except Exception as e:
             logging.error(f"生成解释时发生错误: {str(e)}")
             await update.message.reply_text(
-                f"❌ 生成解释时发生错误，请检查URL格式是否正确",
+                "❌ 生成解释时发生错误，请检查URL格式是否正确",
                 parse_mode=ParseMode.HTML
             )
 

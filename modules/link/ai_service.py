@@ -71,7 +71,7 @@ class AIService:
         messages = [
             {
                 "role": "system",
-                "content": "你是一个专业的文章摘要生成助手。请生成简洁的中文摘要，使用HTML格式，避免使用 markdown。"
+                "content": "你是一个专业的文章摘要生成助手。请生成简洁的中文摘要，使用纯文本格式，避免使用 markdown。"
             },
             {
                 "role": "user",
@@ -88,7 +88,7 @@ class AIService:
         messages = [
             {
                 "role": "system",
-                "content": "你是一个专业的内容解释助手。请用通俗易懂的方式解释内容，使用HTML格式，避免使用 markdown。"
+                "content": "你是一个专业的内容解释助手。请用通俗易懂的方式解释内容，使用纯文本格式，避免使用 markdown。"
             },
             {
                 "role": "user",
