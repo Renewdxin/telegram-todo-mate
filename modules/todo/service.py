@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from bot.config import TIMEZONE
 from modules.todo.dao import TodoDAO
 
@@ -126,6 +126,11 @@ def get_today_todos():
     """获取今天的待办事项"""
     today = datetime.now(TIMEZONE).date()
     return TodoDAO.get_today_todos(today)
+
+def get_tomorrow_todos():
+    """获取明天截止的待办事项"""
+    tomorrow = datetime.now(TIMEZONE).date() + timedelta(days=1)
+    return TodoDAO.get_today_todos(tomorrow)
 
 def format_todo_list(todos, show_type: str = "all") -> str:
     """

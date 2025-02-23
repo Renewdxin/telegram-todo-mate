@@ -5,6 +5,21 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 import os
+import logging
+
+# 配置日志
+logging.basicConfig()
+# 创建一个文件处理器
+sql_handler = logging.FileHandler('sql.log')
+sql_handler.setLevel(logging.INFO)
+# 设置日志格式
+formatter = logging.Formatter('%(asctime)s - %(message)s')
+sql_handler.setFormatter(formatter)
+
+# 获取 SQLAlchemy 的日志记录器
+sql_logger = logging.getLogger('sqlalchemy.engine')
+sql_logger.setLevel(logging.INFO)
+sql_logger.addHandler(sql_handler)
 
 Base = declarative_base()
 
@@ -28,7 +43,13 @@ DB_NAME = os.environ.get("DB_NAME", "todobot")
 
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-engine = create_engine(DATABASE_URL)
+# 创建引擎时启用 SQL 语句记录
+engine = create_engine(
+    DATABASE_URL,
+    echo=True,  # 启用 SQL 语句输出
+    echo_pool=True  # 启用连接池相关日志
+)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():

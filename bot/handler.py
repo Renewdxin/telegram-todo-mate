@@ -1,6 +1,7 @@
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext
+import logging
 
 from bot.config import set_reminder_time
 # 导入待办事项业务逻辑接口
@@ -125,24 +126,6 @@ async def handle_message(update: Update, context: CallbackContext):
                 parse_mode=ParseMode.HTML
             )
     
-    # 查询所有待办事项
-    elif text.lower() == "/demo":
-        todos = todo_service.get_all_todos()
-        formatted_list = todo_service.format_todo_list(todos, "all")
-        await message.reply_text(
-            formatted_list,
-            parse_mode=ParseMode.HTML
-        )
-    
-    # 查询未完成的待办事项
-    elif text.lower() == "/demoz":
-        todos = todo_service.get_pending_todos()
-        formatted_list = todo_service.format_todo_list(todos, "pending")
-        await message.reply_text(
-            formatted_list,
-            parse_mode=ParseMode.HTML
-        )
-    
     # 如果不匹配上述指令，则视为任务创建
     else:
         try:
@@ -164,4 +147,37 @@ async def handle_message(update: Update, context: CallbackContext):
             await message.reply_text(
                 f"❌ {str(e)}",
                 parse_mode=ParseMode.HTML
-            ) 
+            )
+
+# 添加新的命令处理函数
+async def handle_demo_command(update: Update, context: CallbackContext):
+    """处理 /demo 命令"""
+    if not update or not update.effective_message:
+        logging.error("无效的更新对象或消息对象")
+        return
+        
+    logging.info("执行 /demo 命令")
+    todos = todo_service.get_all_todos()
+    logging.info(f"获取到 {len(todos)} 个待办事项")
+    formatted_list = todo_service.format_todo_list(todos, "all")
+    
+    await update.effective_message.reply_text(
+        formatted_list,
+        parse_mode=ParseMode.HTML
+    )
+
+async def handle_demoz_command(update: Update, context: CallbackContext):
+    """处理 /demoz 命令"""
+    if not update or not update.effective_message:
+        logging.error("无效的更新对象或消息对象")
+        return
+        
+    logging.info("执行 /demoz 命令")
+    todos = todo_service.get_pending_todos()
+    logging.info(f"获取到 {len(todos)} 个未完成待办事项")
+    formatted_list = todo_service.format_todo_list(todos, "pending")
+    
+    await update.effective_message.reply_text(
+        formatted_list,
+        parse_mode=ParseMode.HTML
+    ) 

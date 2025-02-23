@@ -14,6 +14,7 @@ from bot.scheduler import start_scheduler
 from bot.config import TELEGRAM_BOT_TOKEN, REMINDER_TIME, TIMEZONE
 from utils.logger import init_logger
 from modules.todo.models import init_db
+from bot import setup_bot
 
 async def shutdown(application: Application):
     """Shutdown the application gracefully"""
@@ -34,7 +35,10 @@ async def main():
     logging.info(f"Bot starting... (Timezone: {TIMEZONE})")
     
     # 创建 Application 实例
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    application = await setup_bot(TELEGRAM_BOT_TOKEN)
+    if not application:
+        logging.error("Failed to initialize bot application")
+        return
     
     try:
         # 注册消息处理器
@@ -50,7 +54,7 @@ async def main():
         
         # 启动机器人并保持运行
         logging.info("Bot is running...")
-        await application.run_polling(allowed_updates=Update.ALL_TYPES, close_loop=False)
+        await application.run_polling(allowed_updates=Update.ALL_TYPES)
         
     except Exception as e:
         logging.error(f"Error occurred: {e}")

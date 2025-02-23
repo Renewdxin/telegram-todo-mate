@@ -1,7 +1,10 @@
+import logging
 from datetime import datetime, date
+
 from sqlalchemy import Date
-from sqlalchemy.orm import Session
+
 from modules.todo.models import Todo, SessionLocal
+
 
 class TodoDAO:
     @staticmethod
@@ -100,10 +103,17 @@ class TodoDAO:
 
     @staticmethod
     def get_pending_todos():
-        """获取所有未完成的待办事项"""
+        """获取所有未完成的待办事项，按截止时间和创建时间排序"""
         db = SessionLocal()
         try:
-            return db.query(Todo).filter(Todo.status != 'completed').all()
+            return (db.query(Todo)
+                    .filter(Todo.status == 'pending')  # 明确指定状态为pending
+                    .order_by(Todo.end_time.asc().nullslast(),  # 先按截止时间排序，没有截止时间的放最后
+                              Todo.create_time.desc())  # 然后按创建时间倒序
+                    .all())
+        except Exception as e:
+            logging.error(f"获取待办事项失败: {e}")
+            return []
         finally:
             db.close()
 
@@ -121,9 +131,15 @@ class TodoDAO:
 
     @staticmethod
     def get_all_todos():
-        """获取所有待办事项"""
+        """获取所有待办事项，按状态和创建时间排序"""
         db = SessionLocal()
         try:
-            return db.query(Todo).order_by(Todo.create_time.desc()).all()
+            return (db.query(Todo)
+                    .order_by(Todo.status.desc(),  # pending 排在前面，completed 排在后面
+                              Todo.create_time.desc())  # 按创建时间倒序
+                    .all())
+        except Exception as e:
+            logging.error(f"获取所有待办事项失败: {e}")
+            return []
         finally:
-            db.close() 
+            db.close()
