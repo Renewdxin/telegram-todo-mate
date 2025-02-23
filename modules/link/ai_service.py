@@ -28,7 +28,7 @@ class AIService:
         }
         """
         payload = {
-            "model": "gpt-4o-mini",
+            "model": "gpt-4o",
             "messages": messages,
             "max_tokens": 1688,
             "temperature": temperature,
