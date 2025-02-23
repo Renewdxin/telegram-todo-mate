@@ -3,6 +3,8 @@ import logging
 from telegram.constants import ParseMode
 from telegram.error import TelegramError
 from datetime import datetime, timedelta
+from telegram.ext import ContextTypes
+from modules.link.service import LinkService
 
 from modules.todo import service as todo_service
 from bot.config import get_current_time, TIMEZONE
@@ -98,3 +100,32 @@ def start_scheduler(bot, chat_id, reminder_time: str):
     )
     scheduler.start()
     return scheduler 
+
+
+async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
+    """发送每日未读链接提醒"""
+    job = context.job
+    user_id = job.data['user_id']
+    
+    service = LinkService()
+    reminder = service.get_unread_summary(user_id)
+    
+    await context.bot.send_message(
+        chat_id=user_id,
+        text=f"📅 每日提醒\n{reminder}"
+    )
+
+def schedule_daily_reminder(application, user_id: int, time: str = "10:00"):
+    """设置每日提醒定时任务"""
+    job_queue = application.job_queue
+    
+    # 解析时间
+    hour, minute = map(int, time.split(':'))
+    
+    # 设置每日定时任务
+    job_queue.run_daily(
+        send_daily_reminder,
+        time=datetime.time(hour=hour, minute=minute),
+        days=(0, 1, 2, 3, 4, 5, 6),  # 每天
+        data={'user_id': user_id}
+    )
