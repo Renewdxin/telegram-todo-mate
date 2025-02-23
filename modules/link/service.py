@@ -142,13 +142,16 @@ class LinkService:
             return "📭 没有未读的链接"
         return self.format_link_info(link)
 
-    def get_unread_links(self, limit: int = 5) -> List[Link]:
-        """获取指定数量的未读链接"""
+    def get_unread_links(self, user_id: int, limit: int = 5) -> List[Link]:
+        """
+        获取指定用户的最近未读链接，最多返回 limit 条
+        如果未读链接不足 limit 条，则全部展示
+        """
         db = SessionLocal()
         try:
             return (db.query(Link)
-                    .filter(Link.is_read == False)
-                    .order_by(Link.created_at.asc())
+                    .filter(Link.is_read == False, Link.user_id == user_id)
+                    .order_by(Link.created_at.desc())
                     .limit(limit)
                     .all())
         finally:

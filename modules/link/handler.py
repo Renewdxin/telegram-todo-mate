@@ -145,10 +145,24 @@ class LinkHandler:
             )
 
     async def handle_unread(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """处理 /unread 命令，显示未读链接统计"""
+        """处理 /unread 命令，显示最近5条未读链接"""
         user_id = update.effective_user.id
-        response = self.service.get_unread_summary(user_id)
-        await update.message.reply_text(response, parse_mode=ParseMode.HTML)
+        # 调用修改后的服务方法，获取当前用户的最近 5 条未读链接
+        unread_links = self.service.get_unread_links(user_id, limit=5)
+        
+        if not unread_links:
+            await update.message.reply_text("📭 您现在没有未读的链接", parse_mode=ParseMode.HTML)
+            return
+
+        # 拼接所有链接的信息，每个链接调用已有的格式化方法
+        message_lines = ["📚 最近未读的链接："]
+        for link in unread_links:
+            info = self.service.format_link_info(link)
+            message_lines.append(info)
+            message_lines.append("")  # 添加空行分隔
+
+        message = "\n".join(message_lines)
+        await update.message.reply_text(message, parse_mode=ParseMode.HTML)
 
     async def handle_mark_read(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """处理 /read 命令，将链接标记为已读"""
