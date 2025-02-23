@@ -16,7 +16,8 @@ class TodoRepository:
                 todo_id=self.next_id,
                 create_time=create_time,
                 end_time=end_time,
-                todo_name=todo_name
+                todo_name=todo_name,
+                status='pending'
             )
             self.todos[self.next_id] = todo
             self.next_id += 1

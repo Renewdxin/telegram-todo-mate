@@ -78,6 +78,53 @@ async def send_afternoon_reminder(bot, chat_id):
         logging.error("发送下午提醒失败: %s", e)
 
 
+async def send_unread_links_summary(bot, chat_id):
+    """
+    发送未读链接摘要
+    """
+    service = LinkService()
+    # 获取5条未读链接
+    unread_links = service.get_unread_links(limit=5)
+    
+    if not unread_links:
+        await bot.send_message(
+            chat_id=chat_id,
+            text="📚 今天没有未读的链接",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # 发送总览消息
+    overview = "📚 <b>未读链接摘要</b>\n\n"
+    for i, link in enumerate(unread_links, 1):
+        overview += f"{i}. <a href='{link.url}'>{link.title or '无标题'}</a>\n"
+    
+    await bot.send_message(
+        chat_id=chat_id,
+        text=overview,
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True
+    )
+
+    # 为每个链接生成并发送摘要
+    for link in unread_links:
+        try:
+            summary = await service.generate_summary(link.url)
+            message = f"🔍 <b>{link.title or '无标题'}</b>\n\n"
+            message += f"🌐 <a href='{link.url}'>原文链接</a>\n\n"
+            message += f"📝 <b>摘要</b>:\n{summary}"
+            
+            await bot.send_message(
+                chat_id=chat_id,
+                text=message,
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True
+            )
+        except Exception as e:
+            logging.error(f"生成链接摘要失败: {e}")
+            continue
+
+
 def start_scheduler(bot, chat_id, reminder_time: str):
     """
     启动定时任务调度器，设置每日早晚两次提醒。
@@ -99,6 +146,15 @@ def start_scheduler(bot, chat_id, reminder_time: str):
         'cron',
         hour=16,
         minute=0,
+        args=[bot, chat_id],
+        timezone=TIMEZONE
+    )
+    # 添加未读链接摘要推送
+    scheduler.add_job(
+        send_unread_links_summary,
+        'cron',
+        hour=14,
+        minute=50,
         args=[bot, chat_id],
         timezone=TIMEZONE
     )

@@ -1,7 +1,10 @@
 from datetime import datetime, timedelta
+from typing import List, Optional
 
 from bot.config import TIMEZONE
 from modules.todo.dao import TodoDAO
+from modules.todo.models import Todo
+from modules.database import SessionLocal
 
 
 def parse_todo_input(text: str):
@@ -45,21 +48,24 @@ def parse_todo_input(text: str):
     return None, text.strip()
 
 
-def create_todo(text: str):
-    """
-    创建待办事项。
-    所有错误都会在这里处理，确保不会创建无效的待办事项。
-    """
+def create_todo(todo_name: str, end_time: Optional[datetime] = None) -> Todo:
+    """创建新的待办事项"""
+    db = SessionLocal()
     try:
-        end_time, todo_content = parse_todo_input(text)
-        if not todo_content:
-            raise ValueError("任务内容不能为空")
-
-        create_time = datetime.now(TIMEZONE)
-        return TodoDAO.create(todo_content, create_time, end_time)
+        todo = Todo(
+            todo_name=todo_name,
+            end_time=end_time,
+            status='pending'
+        )
+        db.add(todo)
+        db.commit()
+        db.refresh(todo)
+        return todo
     except Exception as e:
-        # 确保所有错误都在这里被捕获，不会创建无效数据
-        raise Exception(str(e))
+        db.rollback()
+        raise Exception(f"创建待办事项失败: {str(e)}")
+    finally:
+        db.close()
 
 
 def modify_end_time(todo_id: int, new_end_time_str: str) -> bool:
@@ -109,12 +115,19 @@ def modify_end_time(todo_id: int, new_end_time_str: str) -> bool:
 
 def complete_todo(todo_id: int) -> bool:
     """完成待办事项"""
-    todo = TodoDAO.get_by_id(todo_id)
-    if not todo:
-        raise ValueError("任务不存在")
-    if todo.status == 'completed':
-        raise ValueError("任务已经完成")
-    return TodoDAO.update_status(todo_id, 'completed')
+    db = SessionLocal()
+    try:
+        todo = db.query(Todo).filter(Todo.todo_id == todo_id).first()
+        if todo and todo.status != 'completed':
+            todo.status = 'completed'
+            db.commit()
+            return True
+        return False
+    except Exception as e:
+        db.rollback()
+        raise Exception(f"完成待办事项失败: {str(e)}")
+    finally:
+        db.close()
 
 
 def delete_todo(todo_id: int) -> bool:
@@ -125,9 +138,15 @@ def delete_todo(todo_id: int) -> bool:
     return TodoDAO.delete(todo_id)
 
 
-def get_pending_todos():
-    """获取所有未完成的待办事项（按创建时间倒序）"""
-    return TodoDAO.get_pending_todos()
+def get_pending_todos() -> List[Todo]:
+    """获取未完成的待办事项"""
+    db = SessionLocal()
+    try:
+        return db.query(Todo).filter(Todo.status == 'pending').order_by(Todo.create_time.asc()).all()
+    except Exception as e:
+        raise Exception(f"获取未完成待办事项失败: {str(e)}")
+    finally:
+        db.close()
 
 
 def get_today_todos():
@@ -142,43 +161,42 @@ def get_tomorrow_todos():
     return TodoDAO.get_today_todos(tomorrow)
 
 
-def format_todo_list(todos, show_type: str = "all") -> str:
-    """
-    格式化待办事项列表，返回可读性好的文本。
-    
-    Args:
-        todos: 待办事项列表
-        show_type: 显示类型，"all" 表示所有任务，"pending" 表示未完成任务
-    """
+def format_todo_list(todos: List[Todo], list_type: str = "all") -> str:
+    """格式化待办事项列表"""
     if not todos:
-        return "📝 暂无待办事项"
-
-    title = "📝 所有待办事项：" if show_type == "all" else "📝 未完成的待办事项："
-    result = f"{title}\n"
-
+        return f"📝 没有{'未完成的' if list_type == 'pending' else ''}待办事项"
+    
+    result = f"📝 {'未完成的' if list_type == 'pending' else '所有'}待办事项:\n"
+    
     for todo in todos:
-        # 基础信息
-        task_info = (
-            f"\n🔸 任务 <code>{todo.todo_id}</code>: {todo.todo_name}\n"
-            f"   创建于: {todo.create_time.strftime('%Y-%m-%d %H:%M')}"
-        )
-
-        # 如果有截止时间，添加截止时间信息
+        # 基本信息
+        result += f"\n━━━━━━━━━━━━━━━\n"
+        result += f"📌 <code>{todo.todo_id}</code> "
+        result += "✅" if todo.status == 'completed' else "⭕️"
+        result += f" {todo.todo_name}\n"
+        
+        # 时间信息
+        result += f"⏰ 创建：{todo.create_time.strftime('%m-%d %H:%M')}"
         if todo.end_time:
-            task_info += f"\n   截止时间: {todo.end_time.strftime('%Y-%m-%d %H:%M')}"
-
-        # 如果是显示所有任务，才显示状态
-        if show_type == "all":
-            if todo.status == 'completed':
-                task_info += "\n   状态: ✅ 已完成"
+            time_diff = todo.end_time - datetime.now()
+            if time_diff.days >= 0:
+                days = time_diff.days
+                hours = time_diff.seconds // 3600
+                result += f"\n⏳ 截止：{todo.end_time.strftime('%m-%d %H:%M')}"
+                result += f" (还剩 {days}天{hours}小时)"
             else:
-                task_info += "\n   状态: ⏳ 进行中"
-
-        result += task_info
-
+                result += f"\n⚠️ 截止：{todo.end_time.strftime('%m-%d %H:%M')} [已过期]"
+    
+    result += "\n━━━━━━━━━━━━━━━"
     return result
 
 
-def get_all_todos():
-    """获取所有待办事项（按创建时间倒序）"""
-    return TodoDAO.get_all_todos()
+def get_all_todos() -> List[Todo]:
+    """获取所有待办事项"""
+    db = SessionLocal()
+    try:
+        return db.query(Todo).order_by(Todo.create_time.asc()).all()
+    except Exception as e:
+        raise Exception(f"获取所有待办事项失败: {str(e)}")
+    finally:
+        db.close()

@@ -1,8 +1,6 @@
 import logging
 from datetime import datetime, date
-
 from sqlalchemy import Date
-
 from modules.database import SessionLocal
 from modules.todo.models import Todo
 
@@ -10,16 +8,14 @@ from modules.todo.models import Todo
 class TodoDAO:
     @staticmethod
     def create(todo_name: str, create_time: datetime, end_time: datetime = None) -> Todo:
-        """
-        创建新的待办事项。
-        如果发生任何错误，会回滚事务并抛出异常。
-        """
+        """创建新的待办事项"""
         db = SessionLocal()
         try:
             todo = Todo(
                 todo_name=todo_name,
                 create_time=create_time,
-                end_time=end_time
+                end_time=end_time,
+                status='pending'
             )
             db.add(todo)
             db.commit()
@@ -42,10 +38,7 @@ class TodoDAO:
 
     @staticmethod
     def update_status(todo_id: int, status: str) -> bool:
-        """
-        更新待办事项状态。
-        如果任务不存在或发生错误，返回False。
-        """
+        """更新待办事项状态"""
         db = SessionLocal()
         try:
             todo = db.query(Todo).filter(Todo.todo_id == todo_id).first()
@@ -62,10 +55,7 @@ class TodoDAO:
 
     @staticmethod
     def update_end_time(todo_id: int, new_end_time: datetime) -> bool:
-        """
-        更新待办事项的截止时间。
-        如果任务不存在或发生错误，返回False。
-        """
+        """更新待办事项的截止时间"""
         db = SessionLocal()
         try:
             todo = db.query(Todo).filter(Todo.todo_id == todo_id).first()
@@ -84,10 +74,7 @@ class TodoDAO:
 
     @staticmethod
     def delete(todo_id: int) -> bool:
-        """
-        删除待办事项。
-        如果任务不存在或发生错误，返回False。
-        """
+        """删除待办事项"""
         db = SessionLocal()
         try:
             todo = db.query(Todo).filter(Todo.todo_id == todo_id).first()
@@ -104,13 +91,13 @@ class TodoDAO:
 
     @staticmethod
     def get_pending_todos():
-        """获取所有未完成的待办事项，按截止时间和创建时间排序"""
+        """获取所有未完成的待办事项"""
         db = SessionLocal()
         try:
             return (db.query(Todo)
-                    .filter(Todo.status == 'pending')  # 明确指定状态为pending
-                    .order_by(Todo.end_time.asc().nullslast(),  # 先按截止时间排序，没有截止时间的放最后
-                              Todo.create_time.desc())  # 然后按创建时间倒序
+                    .filter(Todo.status == 'pending')
+                    .order_by(Todo.end_time.asc().nullslast(),
+                             Todo.create_time.desc())
                     .all())
         except Exception as e:
             logging.error(f"获取待办事项失败: {e}")
@@ -132,12 +119,12 @@ class TodoDAO:
 
     @staticmethod
     def get_all_todos():
-        """获取所有待办事项，按状态和创建时间排序"""
+        """获取所有待办事项"""
         db = SessionLocal()
         try:
             return (db.query(Todo)
-                    .order_by(Todo.status.desc(),  # pending 排在前面，completed 排在后面
-                              Todo.create_time.desc())  # 按创建时间倒序
+                    .order_by(Todo.status,
+                             Todo.create_time.desc())
                     .all())
         except Exception as e:
             logging.error(f"获取所有待办事项失败: {e}")

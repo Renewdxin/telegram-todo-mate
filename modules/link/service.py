@@ -1,12 +1,14 @@
 import logging
 import re
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 import aiohttp
 from bs4 import BeautifulSoup
 
 from modules.link.ai_service import AIService
 from modules.link.repository import LinkRepository
+from modules.database import SessionLocal
+from modules.link.models import Link
 
 
 async def fetch_title(url: str) -> Optional[str]:
@@ -117,14 +119,43 @@ class LinkService:
             return "📭 没有未读的链接"
         return self.format_link_info(link)
 
-    def get_unread_links(self, user_id: int) -> str:
-        """获取最新的5条未读链接列表"""
-        links = self.repository.get_unread_links(user_id, limit=5)
-        if not links:
-            return "📭 没有未读的链接"
+    def get_unread_links(self, limit: int = 5) -> List[Link]:
+        """获取指定数量的未读链接"""
+        db = SessionLocal()
+        try:
+            return (db.query(Link)
+                    .filter(Link.is_read == False)
+                    .order_by(Link.created_at.asc())
+                    .limit(limit)
+                    .all())
+        finally:
+            db.close()
 
-        result = "📚 部分未读链接列表：\n"
-        for link in links:
-            result += "\n" + self.format_link_info(link) + "\n"
+    async def generate_summary(self, url: str) -> str:
+        """生成链接内容的摘要"""
+        try:
+            # 获取网页内容
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as response:
+                    if response.status != 200:
+                        return "无法获取网页内容"
+                    html = await response.text()
 
-        return result
+            # 解析网页内容
+            soup = BeautifulSoup(html, 'html.parser')
+            # 移除脚本和样式
+            for script in soup(["script", "style"]):
+                script.decompose()
+            text = soup.get_text()
+            
+            # 清理文本
+            lines = (line.strip() for line in text.splitlines())
+            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+            text = ' '.join(chunk for chunk in chunks if chunk)
+            
+            # 使用 AI 生成摘要
+            summary = await self.ai_service.generate_summary(url, text[:5000])  # 限制文本长度
+            return summary
+        except Exception as e:
+            logging.error(f"生成摘要失败: {e}")
+            return "生成摘要时发生错误"
