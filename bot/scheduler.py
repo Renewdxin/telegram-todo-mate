@@ -110,9 +110,6 @@ async def send_unread_links_summary(bot, chat_id):
     for link in unread_links:
         try:
             summary = await service.generate_summary(link.url)
-            if not summary:  # 添加空摘要检查
-                continue
-                
             message = f"🔍 <b>{link.title or '无标题'}</b>\n\n"
             message += f"🌐 <a href='{link.url}'>原文链接</a>\n\n"
             message += f"📝 <b>摘要</b>:\n{summary}"

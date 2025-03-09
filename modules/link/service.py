@@ -75,28 +75,71 @@ class LinkService:
     async def save_link(self, user_id: int, text: str) -> str:
         """保存链接并返回提示信息"""
         try:
-            url, title = await self.extract_url_and_title(text)
-            if title:
-                title = self.clean_html(title)  # 清理标题中的HTML
+            # 首先尝试从文本中提取URL和用户可能提供的标题
+            url_pattern = r'https?://[^\s]+'
+            url_match = re.search(url_pattern, text)
+            if not url_match:
+                return "❌ 错误: 未找到有效的 URL"
+            
+            url = url_match.group()
+            user_title = text.replace(url, '').strip() or None
+            
+            if user_title:
+                user_title = self.clean_html(user_title)  # 清理标题中的HTML
+            
             db = SessionLocal()
             try:
                 link = Link(
                     user_id=user_id,
                     url=url,
-                    title=title,
+                    title=user_title,
                     is_read=False
                 )
                 db.add(link)
                 db.commit()
                 db.refresh(link)
-                return f"✅ 链接已保存！\n🔗 ID: {link.id}\n📝 标题: {title if title else '无标题'}"
+                link_id = link.id
+                
+                # 在后台异步生成标题
+                if not user_title:
+                    self._update_title_async(url, link_id)
+                
+                return f"✅ 链接已保存！\n🔗 ID: {link_id}\n📝 标题: {user_title if user_title else '生成中...'}"
             finally:
                 db.close()
-        except ValueError as e:
-            return f"❌ 错误: {str(e)}"
         except Exception as e:
             logging.error(f"保存链接时发生错误: {e}")
             return "❌ 保存链接时发生错误"
+    
+    async def _update_title_async(self, url: str, link_id: int) -> None:
+        """异步更新链接标题"""
+        try:
+            # 尝试获取并生成标题
+            title = None
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url) as response:
+                        if response.status == 200:
+                            content = await response.text()
+                            # 使用 AI 服务生成标题
+                            title = await self.ai_service.generate_title(url, content)
+            except Exception as e:
+                logging.error(f"生成标题时发生错误: {e}")
+                return
+            
+            if title:
+                title = self.clean_html(title)
+                # 更新数据库中的标题
+                db = SessionLocal()
+                try:
+                    link = db.query(Link).filter(Link.id == link_id).first()
+                    if link:
+                        link.title = title
+                        db.commit()
+                finally:
+                    db.close()
+        except Exception as e:
+            logging.error(f"异步更新标题时发生错误: {e}")
 
     def get_unread_summary(self, user_id: int) -> str:
         """获取未读链接统计信息"""
